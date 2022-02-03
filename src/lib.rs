@@ -4,16 +4,33 @@ use wee_alloc::WeeAlloc;
 #[global_allocator]
 static ALLOC: WeeAlloc = WeeAlloc::INIT;
 
-struct SnakeCell(usize);
+#[wasm_bindgen]
+#[derive(PartialEq)]
+pub enum Direction {
+    Up,
+    Right,
+    Down,
+    Left,
+}
+
+pub struct SnakeCell(usize);
 
 struct Snake {
     body: Vec<SnakeCell>,
+    direction: Direction,
 }
 
 impl Snake {
-    fn new(spawn_index: usize) -> Snake {
+    fn new(spawn_index: usize, size: usize) -> Snake {
+        let mut body = vec![];
+
+        for i in 0..size {
+            body.push(SnakeCell(spawn_index - i));
+        }
+
         Snake {
             body: vec![SnakeCell(spawn_index)],
+            direction: Direction::Down,
         }
     }
 }
@@ -23,17 +40,15 @@ pub struct World {
     pub width: usize,
     size: usize,
     snake: Snake,
-    
 }
 
 #[wasm_bindgen]
 impl World {
-    pub fn new() -> World {
-        let width = 8;
+    pub fn new(width: usize, snake_idx: usize) -> World {
         World {
             width,
             size: width * width,
-            snake: Snake::new(10),
+            snake: Snake::new(snake_idx, 3),
         }
     }
 
@@ -45,10 +60,64 @@ impl World {
         self.snake.body[0].0
     }
 
-    pub fn update(&mut self) {
-        let snake_idx = self.snake_head_idx();
-        self.snake.body[0].0 = (snake_idx + 1) % self.size;
+    pub fn change_snake_dir(&mut self, direction: Direction) {
+        self.snake.direction = direction;
+    }
 
+    pub fn snake_length(&self) -> usize {
+        self.snake.body.len()
+    }
+    // *const is row pointer
+    // borrowing rules doesn't apply to a pointer
+    // the object will always be in the memory
+    pub fn snake_cells(&self) -> *const SnakeCell {
+        self.snake.body.as_ptr()
+    }
+
+    pub fn step(&mut self) {
+        let next_cell = self.gen_next_snake_cell();
+        self.snake.body[0] = next_cell;
+    }
+
+    fn gen_next_snake_cell(&self) -> SnakeCell {
+        let snake_idx = self.snake_head_idx();
+
+        let row = snake_idx / self.width();
+
+        return match self.snake.direction {
+            Direction::Right => {
+                let threshold = (row + 1) * self.width;
+                if snake_idx + 1 == threshold {
+                    SnakeCell(threshold - self.width)
+                } else {
+                    SnakeCell(snake_idx + 1)
+                }
+            }
+            Direction::Left => {
+                let threshold = row * self.width;
+                if snake_idx == threshold {
+                    SnakeCell(threshold + (self.width - 1))
+                } else {
+                    SnakeCell(snake_idx - 1)
+                }
+            }
+            Direction::Up => {
+                let threshold = snake_idx - (row * self.width);
+                if snake_idx == threshold {
+                    SnakeCell((self.size - self.width) + threshold)
+                } else {
+                    SnakeCell(snake_idx - self.width)
+                }
+            }
+            Direction::Down => {
+                let threshold = snake_idx + ((self.width - row) * self.width);
+                if snake_idx + self.width == threshold {
+                    SnakeCell(threshold - ((row + 1) * self.width))
+                } else {
+                    SnakeCell(snake_idx + self.width)
+                }
+            }
+        };
     }
 }
 
