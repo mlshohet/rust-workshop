@@ -22,15 +22,15 @@ struct Snake {
 
 impl Snake {
     fn new(spawn_index: usize, size: usize) -> Snake {
-        let mut body = vec![];
+        let mut body = vec!();
 
         for i in 0..size {
             body.push(SnakeCell(spawn_index - i));
         }
 
         Snake {
-            body: vec![SnakeCell(spawn_index)],
-            direction: Direction::Down,
+            body,
+            direction: Direction::Right,
         }
     }
 }
@@ -67,7 +67,8 @@ impl World {
     pub fn snake_length(&self) -> usize {
         self.snake.body.len()
     }
-    // *const is row pointer
+    // *const is raw pointer,
+    // used heavily when combining languages
     // borrowing rules doesn't apply to a pointer
     // the object will always be in the memory
     pub fn snake_cells(&self) -> *const SnakeCell {
