@@ -54,8 +54,6 @@ init().then((wasm) => {
       world.snake_length()
     );
 
-    console.log("length: ",world.snake_length());
-
     snakeCells.forEach((cellIdx, i) => {
       const col = cellIdx % worldWidth;
       const row = Math.floor(cellIdx / worldWidth);
